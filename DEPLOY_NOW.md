@@ -251,8 +251,3 @@ Same Docker app as always — **no functionality change**. Only “hosting” is
 
 ---
 
-## If you’re stuck
-
-Paste **which path (A / B / C / D)** you’re on and the **last 30 lines of logs** from the failing service (API, web, or Elasticsearch).
-
-**Railway — Elasticsearch volume crashes:** **`RAILWAY_RUN_UID=0`** causes **`can not run elasticsearch as root`**. **Remove** that variable and deploy from **`railway-elasticsearch`** (this repo, root dir **`railway-elasticsearch`**) instead of the stock Hub image. **`failed to obtain node locks`** on the stock image + volume is the same permission issue — use the wrapper image. Keep **one** instance (**Settings → Scale**); volumes + replicas don’t mix on Railway.
