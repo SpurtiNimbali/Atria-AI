@@ -1,4 +1,4 @@
-# CareFork
+# Atria AI
 
 Conversational caregiver copilot: discharge-style context in Elasticsearch, FastAPI WebSocket backend, and a Vite/React UI. **Not medical advice** — educational and planning support only.
 
@@ -83,7 +83,6 @@ npm install && npm run dev
 
 | Variable | Role |
 |----------|------|
-| `AGENT_BACKEND` | `conversational` (default) or `multi` (orchestrator) |
 | `ALLOWED_ORIGINS` | Comma-separated CORS origins (include your Vercel URL in prod) |
 | `PORT` / `GATEWAY_PORT` | API port (default 8000) |
 | `ELASTIC_URL` | Elasticsearch base URL |
@@ -143,4 +142,4 @@ The API must allow your Vercel origin. With `ALLOWED_ORIGINS` in the server `.en
 
 ## Archived docs
 
-Pitch decks, architecture write-ups, and older stack notes live under `_legacy/docs/`.
+Pitch decks, architecture write-ups, and older stack notes live under `_legacy/docs/`. Some of those files still use the older codename **CareFork**; the product name is **Atria AI**.

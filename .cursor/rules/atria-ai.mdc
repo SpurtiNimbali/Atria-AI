@@ -1,10 +1,10 @@
 ---
 alwaysApply: true
 ---
-# CareFork Project Rules
+# Atria AI Project Rules
 
 ## Project Overview
-CareFork is a conversational caregiver copilot that "forks" post-care trajectories in real-time, grounded in discharge documents and evidence.
+Atria AI is a conversational caregiver copilot that supports post-discharge planning and education, grounded in discharge documents and evidence.
 
 ## Core Philosophy
 - This is NOT a chatbot - every message triggers structured state updates and route simulation
@@ -20,10 +20,9 @@ CareFork is a conversational caregiver copilot that "forks" post-care trajectori
 5. **Trace**: Complete audit trail of reasoning
 
 ## Tech Stack
-- Backend: Python + Modal (serverless)
-- Orchestration: LangGraph (stateful graph)
-- API: FastAPI-style endpoints on Modal
-- Frontend: Streamlit (MVP)
+- Backend: Python + FastAPI + WebSockets
+- Search: Elasticsearch
+- Frontend: Vite + React (`web/`)
 - LLM: Only for extraction and NLG, never for medical reasoning
 
 ## Safety Requirements

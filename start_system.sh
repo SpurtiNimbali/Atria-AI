@@ -1,5 +1,5 @@
 #!/bin/bash
-# CareFork — start Elasticsearch (Docker), ingest demo patient if needed, backend API, web UI
+# Atria AI — start Elasticsearch (Docker), ingest demo patient if needed, backend API, web UI
 
 set -e
 
@@ -11,7 +11,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m'
 
 echo "========================================"
-echo "CareFork — local stack"
+echo "Atria AI — local stack"
 echo "========================================"
 echo ""
 
@@ -90,8 +90,6 @@ echo "  Elasticsearch: http://localhost:9200"
 echo "  API:            http://127.0.0.1:8000"
 echo "  Web UI:         http://localhost:5173"
 echo "  Patient ID:     synthetic-001 (Sophia Grace Doe)"
-echo ""
-echo "  AGENT_BACKEND=conversational (default) or multi — set in .env before starting API"
 echo ""
 echo "Stop: kill $API_PID $WEB_PID && docker compose down"
 echo ""

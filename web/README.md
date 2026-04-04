@@ -1,7 +1,6 @@
+# Atria AI (web)
 
-  # Voice-First Medical Workspace (Copy)
-
-  This is a code bundle for Voice-First Medical Workspace (Copy). The original project is available at https://www.figma.com/design/k4Q90dUADeesFk3hVeW9eX/Voice-First-Medical-Workspace--Copy-.
+Vite + React frontend for Atria AI. Figma-derived UI components; app wiring lives in `src/app/`.
 
   ## Running the code
 

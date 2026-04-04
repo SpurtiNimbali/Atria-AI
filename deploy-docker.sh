@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# CareFork — Elasticsearch + API + nginx UI in Docker (single host).
+# Atria AI — Elasticsearch + API + nginx UI in Docker (single host).
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 cd "$ROOT"
@@ -17,7 +17,7 @@ fi
 docker compose --profile fullstack up -d --build
 
 echo ""
-echo "CareFork (Docker full stack)"
+echo "Atria AI (Docker full stack)"
 echo "  UI (nginx + API proxy):  http://localhost:8080"
 echo "  API (direct):            http://127.0.0.1:8000"
 echo "  Elasticsearch:           http://localhost:9200"

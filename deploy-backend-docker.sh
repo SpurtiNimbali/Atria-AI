@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# CareFork — Elasticsearch + API only (use with Vercel for the frontend).
+# Atria AI — Elasticsearch + API only (use with Vercel for the frontend).
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 cd "$ROOT"
@@ -17,7 +17,7 @@ fi
 docker compose --profile backend up -d --build
 
 echo ""
-echo "CareFork backend (Docker) — pair with Vercel (web/)"
+echo "Atria AI backend (Docker) — pair with Vercel (web/)"
 echo "  API:              http://127.0.0.1:8000  (put HTTPS reverse proxy in front for production)"
 echo "  Elasticsearch:  http://localhost:9200  (do not expose publicly; firewall this port)"
 echo "  Kibana:           http://localhost:5601"

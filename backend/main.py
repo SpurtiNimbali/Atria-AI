@@ -1,6 +1,6 @@
 """
-CareFork API gateway — FastAPI + WebSockets.
-Agents live in ./agent (ConversationalDoctor tools + optional multi-agent orchestration).
+Atria AI API gateway — FastAPI + WebSockets.
+Agent logic lives in ./agent (ConversationalDoctor + tools).
 """
 import json
 import logging
@@ -50,9 +50,7 @@ AGENT_DIR = os.path.join(os.path.dirname(__file__), "agent")
 if AGENT_DIR not in sys.path:
     sys.path.insert(0, AGENT_DIR)
 
-AGENT_BACKEND = os.getenv("AGENT_BACKEND", "conversational").strip().lower()
-
-app = FastAPI(title="CareFork API")
+app = FastAPI(title="Atria AI API")
 
 allowed_origins = [
     "http://localhost:3000",
@@ -93,15 +91,6 @@ from local_ingest import ingest_patient_local  # noqa: E402
 conversational_doctor = ConversationalDoctor()
 logger.info("ConversationalDoctor ready")
 
-agent_manager = None
-try:
-    from agents.manager import AgentManager  # noqa: E402
-
-    agent_manager = AgentManager()
-    logger.info("AgentManager (multi-agent) ready")
-except Exception as e:
-    logger.warning("AgentManager not initialized: %s", e)
-
 
 class TTSRequest(BaseModel):
     text: str
@@ -110,9 +99,8 @@ class TTSRequest(BaseModel):
 @app.get("/")
 async def root():
     return {
-        "service": "CareFork API",
+        "service": "Atria AI API",
         "status": "running",
-        "agent_backend": AGENT_BACKEND,
     }
 
 
@@ -196,21 +184,6 @@ async def _stream_agent_response(websocket: WebSocket, patient_id: str, transcri
     es = get_elastic_client()
     patient_context = get_patient_summary(es, patient_id)
 
-    use_multi = AGENT_BACKEND == "multi" and agent_manager is not None
-    if AGENT_BACKEND == "multi" and agent_manager is None:
-        logger.warning("AGENT_BACKEND=multi but AgentManager failed to load; falling back to conversational")
-
-    if use_multi:
-        async for event in agent_manager.process_query(patient_id, transcript):
-            et = event.get("type")
-            if et == "final_response":
-                out = event.get("output") or {}
-                text = out.get("output") if isinstance(out, dict) else str(out)
-                await websocket.send_json({"type": "response", "content": text})
-            else:
-                await websocket.send_json(event)
-        return
-
     async for event in conversational_doctor.process_query(patient_id, transcript, patient_context):
         await websocket.send_json(event)
 
@@ -219,7 +192,7 @@ async def _stream_agent_response(websocket: WebSocket, patient_id: str, transcri
 async def websocket_endpoint(websocket: WebSocket):
     logger.info("WebSocket connection attempt")
     await websocket.accept()
-    logger.info("WebSocket accepted (agent_backend=%s)", AGENT_BACKEND)
+    logger.info("WebSocket accepted")
 
     try:
         while True:

@@ -1,11 +1,11 @@
 #!/bin/bash
-# CareFork — minimal local setup (no Modal): Docker ES + Python venv + web deps
+# Atria AI — minimal local setup (no Modal): Docker ES + Python venv + web deps
 
 set -e
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 cd "$ROOT"
 
-echo "CareFork setup"
+echo "Atria AI setup"
 echo "=============="
 
 for cmd in python3 node docker; do
