@@ -1,0 +1,33 @@
+---
+alwaysApply: true
+---
+# CareFork Project Rules
+
+## Project Overview
+CareFork is a conversational caregiver copilot that "forks" post-care trajectories in real-time, grounded in discharge documents and evidence.
+
+## Core Philosophy
+- This is NOT a chatbot - every message triggers structured state updates and route simulation
+- All recommendations must be grounded in uploaded documents with citations
+- No medical advice - educational and planning support only
+- All probabilities come from deterministic rules, not LLM speculation
+
+## Key Components
+1. **PatientTwin**: Structured state compiled from discharge docs
+2. **Route Simulator**: Branching future graph with probabilities and triggers
+3. **Evidence Events**: Discrete structured events from conversation
+4. **TaskBoard**: Auto-generated actionable checklist
+5. **Trace**: Complete audit trail of reasoning
+
+## Tech Stack
+- Backend: Python + Modal (serverless)
+- Orchestration: LangGraph (stateful graph)
+- API: FastAPI-style endpoints on Modal
+- Frontend: Streamlit (MVP)
+- LLM: Only for extraction and NLG, never for medical reasoning
+
+## Safety Requirements
+- Always include "Not medical advice" disclaimers
+- No diagnosis, no medication dosing, no treatment prescriptions
+- Every recommendation must link back to source documents
+- Flag when information is missing or uncertain

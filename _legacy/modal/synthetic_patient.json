@@ -1,0 +1,250 @@
+{
+    "resourceType": "Bundle",
+    "type": "collection",
+    "entry": [
+      {
+        "resource": {
+          "resourceType": "Patient",
+          "id": "synthetic-001",
+          "name": [
+            {
+              "use": "official",
+              "family": "Doe",
+              "given": ["Sophia", "Grace"]
+            }
+          ],
+          "gender": "female",
+          "birthDate": "2012-04-22",
+          "address": [
+            {
+              "use": "home",
+              "line": ["456 University Ave"],
+              "city": "Palo Alto",
+              "state": "CA",
+              "postalCode": "94301"
+            }
+          ],
+          "telecom": [
+            {
+              "system": "phone",
+              "value": "650-555-0199",
+              "use": "mobile"
+            }
+          ],
+          "extension": [
+            {
+              "url": "http://example.org/fhir/StructureDefinition/social-history",
+              "valueString": "Never smoker. No alcohol or drug use."
+            },
+            {
+              "url": "http://example.org/fhir/StructureDefinition/height",
+              "valueQuantity": {
+                "value": 150,
+                "unit": "cm"
+              }
+            },
+            {
+              "url": "http://example.org/fhir/StructureDefinition/weight",
+              "valueQuantity": {
+                "value": 42,
+                "unit": "kg"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "resource": {
+          "resourceType": "Coverage",
+          "id": "coverage-001",
+          "status": "active",
+          "beneficiary": { "reference": "Patient/synthetic-001" },
+          "subscriber": { "reference": "Patient/synthetic-001" },
+          "relationship": {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/subscriber-relationship",
+                "code": "self",
+                "display": "Self"
+              }
+            ]
+          },
+          "period": { "start": "2023-01-01" },
+          "payor": [
+            { "display": "Blue Shield of California" }
+          ],
+          "class": [
+            {
+              "type": {
+                "coding": [
+                  {
+                    "system": "http://terminology.hl7.org/CodeSystem/coverage-class",
+                    "code": "plan",
+                    "display": "Plan"
+                  }
+                ]
+              },
+              "value": "PPO Gold 2500"
+            }
+          ],
+          "type": {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+                "code": "PPO",
+                "display": "Preferred Provider Organization"
+              }
+            ],
+            "text": "PPO Plan"
+          },
+          "identifier": [
+            {
+              "system": "http://example.org/insurance/policy",
+              "value": "BSCA-948372615"
+            }
+          ]
+        }
+      },
+      {
+        "resource": {
+          "resourceType": "Condition",
+          "id": "condition-001",
+          "subject": { "reference": "Patient/synthetic-001" },
+          "code": {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "74400008",
+                "display": "Acute appendicitis"
+              }
+            ],
+            "text": "Acute appendicitis"
+          },
+          "onsetDateTime": "2026-02-14T06:30:00Z",
+          "clinicalStatus": {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+                "code": "active"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "resource": {
+          "resourceType": "Condition",
+          "id": "condition-002",
+          "subject": { "reference": "Patient/synthetic-001" },
+          "code": {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "161665007",
+                "display": "History of kidney transplant"
+              }
+            ],
+            "text": "Status post kidney transplant"
+          },
+          "onsetDateTime": "2021-08-12",
+          "clinicalStatus": {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+                "code": "active"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "resource": {
+          "resourceType": "MedicationRequest",
+          "id": "med-001",
+          "status": "active",
+          "intent": "order",
+          "medicationCodeableConcept": {
+            "coding": [
+              {
+                "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+                "code": "1111832",
+                "display": "Tacrolimus 1mg"
+              }
+            ],
+            "text": "Tacrolimus 1mg"
+          },
+          "subject": { "reference": "Patient/synthetic-001" },
+          "authoredOn": "2021-08-13",
+          "dosageInstruction": [
+            { "text": "Take 1 capsule twice daily" }
+          ]
+        }
+      },
+      {
+        "resource": {
+          "resourceType": "MedicationRequest",
+          "id": "med-002",
+          "status": "active",
+          "intent": "order",
+          "medicationCodeableConcept": {
+            "coding": [
+              {
+                "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+                "code": "8640",
+                "display": "Prednisone 5mg"
+              }
+            ],
+            "text": "Prednisone 5mg"
+          },
+          "subject": { "reference": "Patient/synthetic-001" },
+          "authoredOn": "2021-08-13",
+          "dosageInstruction": [
+            { "text": "Take 1 tablet daily" }
+          ]
+        }
+      },
+      {
+        "resource": {
+          "resourceType": "Procedure",
+          "id": "procedure-001",
+          "status": "completed",
+          "code": {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "174041007",
+                "display": "Laparoscopic appendectomy"
+              }
+            ],
+            "text": "Appendix removal — no rupture"
+          },
+          "subject": { "reference": "Patient/synthetic-001" },
+          "performedDateTime": "2026-02-14"
+        }
+      }
+    ],
+  
+    "updates": [
+      {
+        "time": "2026-02-14T07:43:00Z",
+        "category": "Anesthesia Data",
+        "enteredBy": "Anesthesiologist",
+        "event": "Anesthesia Induction",
+        "note": "General anesthesia induced; airway secured without complication."
+      },
+      {
+        "time": "2026-02-14T08:00:00Z",
+        "category": "Surgery Details",
+        "enteredBy": "Surgeon",
+        "event": "Incision",
+        "note": "Incision made; laparoscopic access obtained."
+      },
+      {
+        "time": "2026-02-14T08:53:00Z",
+        "category": "Surgery Details",
+        "enteredBy": "Surgeon",
+        "event": "Appendix Removed",
+        "note": "Appendix removed laparoscopically. No rupture or abscess observed. Hemostasis achieved."
+      }
+    ]
+  }
