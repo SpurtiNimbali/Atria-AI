@@ -129,7 +129,7 @@ Sign in at [railway.app](https://railway.app) → **New project** → **Empty pr
 
 #### Service A: `elasticsearch`
 
-- **+ New** → **Docker Image** → `docker.elastic.co/elasticsearch/elasticsearch:8.11.0`
+- **+ New** → **Docker Image** → **`elasticsearch:8.11.0`** (Docker Hub — Railway often **404s** on `docker.elastic.co/…`)
 - **Name:** `elasticsearch`
 - **Variables:**
   - `discovery.type` = `single-node`
@@ -183,7 +183,7 @@ Railway treats **each Compose service as its own service** (not one `docker comp
 
 ### 1. Service: `elasticsearch`
 
-- **New** → **Docker Image** → `docker.elastic.co/elasticsearch/elasticsearch:8.11.0`
+- **New** → **Docker Image** → **`elasticsearch:8.11.0`** (Docker Hub; avoid `docker.elastic.co` on Railway — 404)
 - **Name the service exactly:** `elasticsearch` (important for DNS).
 - **Variables:**
   - `discovery.type` = `single-node`
