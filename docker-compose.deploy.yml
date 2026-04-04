@@ -1,65 +1,52 @@
+# One public URL: the "web" service (nginx → API + static UI).
+# For Railway, Render, etc.: point HTTPS / public HTTP at container port 80 (map host 8080 below for local tests).
+# Set OPENAI_API_KEY and JINA_API_KEY in the platform UI or in a root .env for compose interpolation.
+# Needs roughly 2 GB+ RAM for Elasticsearch + API + nginx.
+
 services:
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
-    container_name: ehr-elasticsearch
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=false
-      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
-    ports:
-      - "9200:9200"
-      - "9300:9300"
+      - "ES_JAVA_OPTS=-Xms256m -Xmx256m"
     volumes:
       - elasticsearch_data:/usr/share/elasticsearch/data
     networks:
-      - ehr-network
+      - atria
     healthcheck:
       test:
         [
           "CMD-SHELL",
           "curl -sf http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=50s >/dev/null || exit 1",
         ]
-      interval: 10s
+      interval: 15s
       timeout: 60s
-      retries: 10
-      start_period: 40s
+      retries: 12
+      start_period: 60s
 
-  kibana:
-    image: docker.elastic.co/kibana/kibana:8.11.0
-    container_name: ehr-kibana
-    ports:
-      - "5601:5601"
-    environment:
-      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
-    depends_on:
-      - elasticsearch
-    networks:
-      - ehr-network
-
-  # API + ES (Vercel hosts the UI): docker compose --profile backend up -d --build
-  # Full stack (UI in Docker too): docker compose --profile fullstack up -d --build
   api:
-    profiles: ["fullstack", "backend"]
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: ehr-api
-    env_file:
-      - .env
     environment:
       ELASTIC_URL: http://elasticsearch:9200
       PORT: "8000"
-    ports:
-      - "8000:8000"
+      AUTO_INGEST_SYNTHETIC_DEMO: "1"
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      JINA_API_KEY: ${JINA_API_KEY}
+      ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY:-}
+      ELEVENLABS_VOICE_ID: ${ELEVENLABS_VOICE_ID:-EXAVITQu4vr4xnSDxMaL}
+      ELEVENLABS_MODEL_ID: ${ELEVENLABS_MODEL_ID:-eleven_multilingual_v2}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-}
     depends_on:
       elasticsearch:
         condition: service_healthy
     networks:
-      - ehr-network
+      - atria
     restart: unless-stopped
 
   web:
-    profiles: ["fullstack"]
     build:
       context: ./web
       dockerfile: Dockerfile
@@ -67,19 +54,17 @@ services:
         VITE_BACKEND_URL: ""
     environment:
       API_UPSTREAM: api:8000
-    container_name: ehr-web
     ports:
       - "8080:80"
     depends_on:
       - api
     networks:
-      - ehr-network
+      - atria
     restart: unless-stopped
 
 volumes:
   elasticsearch_data:
-    driver: local
 
 networks:
-  ehr-network:
+  atria:
     driver: bridge

@@ -7,6 +7,7 @@ import logging
 import os
 import sys
 import asyncio
+from contextlib import asynccontextmanager
 from typing import Any, Dict
 
 import certifi
@@ -50,7 +51,27 @@ AGENT_DIR = os.path.join(os.path.dirname(__file__), "agent")
 if AGENT_DIR not in sys.path:
     sys.path.insert(0, AGENT_DIR)
 
-app = FastAPI(title="Atria AI API")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    if os.getenv("AUTO_INGEST_SYNTHETIC_DEMO", "").strip() == "1":
+        try:
+            from ingest_synthetic import ingest_synthetic_patient
+
+            json_path = os.path.join(os.path.dirname(__file__), "agent", "synthetic_patient.json")
+
+            def _ingest():
+                return ingest_synthetic_patient(json_path)
+
+            loop = asyncio.get_running_loop()
+            out = await loop.run_in_executor(None, _ingest)
+            logger.info("AUTO_INGEST_SYNTHETIC_DEMO finished: %s", out)
+        except Exception as e:
+            logger.warning("AUTO_INGEST_SYNTHETIC_DEMO failed (non-fatal): %s", e, exc_info=True)
+    yield
+
+
+app = FastAPI(title="Atria AI API", lifespan=lifespan)
 
 allowed_origins = [
     "http://localhost:3000",

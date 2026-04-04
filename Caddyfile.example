@@ -1,0 +1,20 @@
+# Copy to /etc/caddy/Caddyfile (or run: caddy run --config ./Caddyfile)
+# Replace the domain with yours. Point DNS A/AAAA records to this server.
+# Install Caddy: https://caddyserver.com/docs/install
+#
+# --- Option A: Full stack in Docker (nginx UI on host port 8080) ----------
+# Testers open ONE URL: https://app.example.com (UI + API + WebSocket same origin)
+
+# app.example.com {
+#     reverse_proxy 127.0.0.1:8080
+# }
+
+# --- Option B: API only on host (Vercel serves the UI) -------------------
+# Set VITE_BACKEND_URL=https://api.example.com on Vercel.
+# In server .env: ALLOWED_ORIGINS=https://your-app.vercel.app
+
+# api.example.com {
+#     reverse_proxy 127.0.0.1:8000
+# }
+
+# Firewall: allow 80/443 (and SSH). Do NOT expose 9200, 9300, or 5601 publicly.

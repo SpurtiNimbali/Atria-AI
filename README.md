@@ -1,5 +1,7 @@
 # Atria AI
 
+**→ Shareable deploy (what you must do in the browser): [DEPLOY_NOW.md](DEPLOY_NOW.md)**
+
 Conversational caregiver copilot: discharge-style context in Elasticsearch, FastAPI WebSocket backend, and a Vite/React UI. **Not medical advice** — educational and planning support only.
 
 ## Layout
@@ -140,6 +142,12 @@ Redeploy Vercel after changing `VITE_BACKEND_URL`.
 ### 4. CORS
 
 The API must allow your Vercel origin. With `ALLOWED_ORIGINS` in the server `.env` (loaded by the `api` container), include exactly your preview/production URLs if they differ (comma-separated).
+
+---
+
+## One link for testers (HTTPS)
+
+Step-by-step (VPS, Railway, ngrok): **[DEPLOY_NOW.md](DEPLOY_NOW.md)**.
 
 ---
 
