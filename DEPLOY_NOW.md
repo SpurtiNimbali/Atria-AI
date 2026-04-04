@@ -129,14 +129,16 @@ Sign in at [railway.app](https://railway.app) → **New project** → **Empty pr
 
 #### Service A: `elasticsearch`
 
-- **+ New** → **Docker Image** → **`elasticsearch:8.11.0`** (Docker Hub — Railway often **404s** on `docker.elastic.co/…`)
+- **+ New** → **GitHub Repo** → this repo → **Root directory:** **`railway-elasticsearch`** (small wrapper around **`elasticsearch:8.11.0`** that `chown`s the data dir then starts ES as user **`elasticsearch`**).  
+  - **Do not** set **`RAILWAY_RUN_UID`** here: **`RAILWAY_RUN_UID=0`** fixes volume permissions but **Elasticsearch 8 refuses to run as root** (`can not run elasticsearch as root`).  
+  - **Alternative (no volume, quick demo):** **Docker Image** → **`elasticsearch:8.11.0`** only — data is **lost** on redeploy; skip **`RAILWAY_RUN_UID`**.
 - **Name:** `elasticsearch`
 - **Variables:**
   - `discovery.type` = `single-node`
   - `xpack.security.enabled` = `false`
   - `ES_JAVA_OPTS` = `-Xms256m -Xmx256m`
-- **Volumes:** mount **`/usr/share/elasticsearch/data`**
-- **Networking:** no public domain
+- **Volume (not under Settings):** **⌘K** / canvas → attach a **volume** at **`/usr/share/elasticsearch/data`** if you want persistence ([Using volumes](https://docs.railway.com/volumes)). Use the **`railway-elasticsearch`** build when you use a volume.
+- **Networking:** **elasticsearch** → **Settings** → **Networking** → **do not** click **Generate Domain** (keep ES private; API uses `elasticsearch.railway.internal`).
 
 #### Service B: `api`
 
@@ -183,14 +185,14 @@ Railway treats **each Compose service as its own service** (not one `docker comp
 
 ### 1. Service: `elasticsearch`
 
-- **New** → **Docker Image** → **`elasticsearch:8.11.0`** (Docker Hub; avoid `docker.elastic.co` on Railway — 404)
+- **New** → **GitHub Repo** → this repo → **Root directory:** **`railway-elasticsearch`**. (Or **Docker Image** `elasticsearch:8.11.0` **without** a volume for a throwaway demo.)
 - **Name the service exactly:** `elasticsearch` (important for DNS).
 - **Variables:**
   - `discovery.type` = `single-node`
   - `xpack.security.enabled` = `false`
   - `ES_JAVA_OPTS` = `-Xms256m -Xmx256m`
-- **Volumes:** add volume, mount path **`/usr/share/elasticsearch/data`**
-- **Networking:** do **not** generate a public domain (keep internal only).
+- **Volume:** **⌘K** / canvas → mount **`/usr/share/elasticsearch/data`**. Use **`railway-elasticsearch`** when a volume is attached; **never** `RAILWAY_RUN_UID=0` with stock ES 8 (root is blocked). ([docs](https://docs.railway.com/volumes))
+- **Networking:** **Settings** → **Networking** → **do not** generate a public domain (internal only).
 
 ### 2. Service: `api`
 
@@ -252,3 +254,5 @@ Same Docker app as always — **no functionality change**. Only “hosting” is
 ## If you’re stuck
 
 Paste **which path (A / B / C / D)** you’re on and the **last 30 lines of logs** from the failing service (API, web, or Elasticsearch).
+
+**Railway — Elasticsearch volume crashes:** **`RAILWAY_RUN_UID=0`** causes **`can not run elasticsearch as root`**. **Remove** that variable and deploy from **`railway-elasticsearch`** (this repo, root dir **`railway-elasticsearch`**) instead of the stock Hub image. **`failed to obtain node locks`** on the stock image + volume is the same permission issue — use the wrapper image. Keep **one** instance (**Settings → Scale**); volumes + replicas don’t mix on Railway.
