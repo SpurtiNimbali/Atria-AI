@@ -108,7 +108,8 @@ export default function App() {
         status: (rawPatient as { status?: string }).status || "Stable",
       }
     : {
-        name: patientId === "synthetic-001" ? "Sophia Grace Doe" : "Emily Marie Johnson",
+        // Deliberate placeholder: when real ES-backed `patient.name` appears, ingest is working.
+        name: "Emily Marie Johnson",
         mrn: patientId,
         status: "Stable",
       };
@@ -121,7 +122,7 @@ export default function App() {
         if (!response.ok) {
           const snippet = (await response.text()).slice(0, 400);
           console.warn(
-            "Dashboard API not OK — Sophia/demo data needs Elasticsearch + ingest. Status:",
+            "Dashboard API not OK — Elasticsearch ingest may be missing or API error. Status:",
             response.status,
             snippet || ""
           );
