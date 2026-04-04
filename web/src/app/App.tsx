@@ -13,11 +13,34 @@ import {
 
 type VoiceState = "idle" | "listening" | "thinking" | "reasoning" | "speaking";
 
+// Split deploy: set VITE_BACKEND_URL to the API origin only, e.g. https://xxx.up.railway.app
+// (not the Vercel UI URL). A common mistake is pasting both → breaks fetch + WebSocket.
+function normalizeSplitDeployBackendUrl(raw: string): string {
+  let s = raw.trim().replace(/\/$/, "");
+  if (!s) return s;
+  if (!/^https?:\/\//i.test(s)) s = `https://${s}`;
+  try {
+    const u = new URL(s);
+    if (u.pathname && u.pathname !== "/") {
+      const first = u.pathname.replace(/^\//, "").split("/")[0] || "";
+      if (
+        first.includes(".") &&
+        (first.endsWith(".up.railway.app") || first.includes("railway.app") || /^api[-.]/.test(first))
+      ) {
+        return `${u.protocol}//${first}`;
+      }
+    }
+    return `${u.protocol}//${u.host}`;
+  } catch {
+    return raw.replace(/\/$/, "");
+  }
+}
+
 // Split deploy: set VITE_BACKEND_URL. Same-origin (Docker nginx / TLS reverse proxy): leave unset in prod build.
 const getBackendUrl = () => {
   const v = import.meta.env.VITE_BACKEND_URL as string | undefined;
   if (typeof v === "string" && v.trim().length > 0) {
-    return v.replace(/\/$/, "");
+    return normalizeSplitDeployBackendUrl(v);
   }
   if (import.meta.env.DEV) {
     return "http://localhost:8000";
@@ -28,10 +51,8 @@ const getBackendUrl = () => {
 const getBackendWsUrl = () => {
   const v = import.meta.env.VITE_BACKEND_URL as string | undefined;
   if (typeof v === "string" && v.trim().length > 0) {
-    return v
-      .replace(/\/$/, "")
-      .replace(/^https:\/\//, "wss://")
-      .replace(/^http:\/\//, "ws://");
+    const httpBase = normalizeSplitDeployBackendUrl(v);
+    return httpBase.replace(/^https:\/\//i, "wss://").replace(/^http:\/\//i, "ws://");
   }
   if (import.meta.env.DEV) {
     return "ws://localhost:8000";

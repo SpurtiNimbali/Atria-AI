@@ -162,7 +162,7 @@ Wait until **api** deploy logs show healthy / ingest finished (first time ~few m
 2. **Root Directory:** `web`  
 3. Framework: **Vite** (build `npm run build`, output `dist`).  
 4. **Environment variables:**
-   - `VITE_BACKEND_URL` = your Railway API URL, e.g. `https://your-api.up.railway.app` (**no** trailing slash)  
+   - `VITE_BACKEND_URL` = **only** your Railway API origin, e.g. `https://your-api.up.railway.app` (**no** trailing slash, **not** your `*.vercel.app` URL — mixing them breaks REST + **WebSockets**).  
 5. **Deploy**. Open the **`*.vercel.app`** link.
 
 After you change Railway’s API URL or redeploy, **rebuild** Vercel if `VITE_BACKEND_URL` changes (it’s baked in at build time).
