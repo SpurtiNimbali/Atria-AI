@@ -1,0 +1,4 @@
+# Override image default (network.host: 0.0.0.0) so the node accepts Railway
+# private-network traffic, which is delivered over IPv6 (see Railway docs).
+cluster.name: "docker-cluster"
+network.bind_host: ["0.0.0.0", "::"]

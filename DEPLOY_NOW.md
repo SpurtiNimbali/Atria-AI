@@ -138,6 +138,7 @@ Sign in at [railway.app](https://railway.app) → **New project** → **Empty pr
   - `xpack.security.enabled` = `false`
   - `ES_JAVA_OPTS` = `-Xms256m -Xmx256m`
 - **Volume (not under Settings):** **⌘K** / canvas → attach a **volume** at **`/usr/share/elasticsearch/data`** if you want persistence ([Using volumes](https://docs.railway.com/volumes)). Use the **`railway-elasticsearch`** build when you use a volume.
+- **API logs show `ConnectTimeout` / `elasticsearch.railway.internal:9200`:** Railway’s private network expects services to **listen on IPv6** as well as IPv4. The stock Docker image only sets `network.host: 0.0.0.0` (IPv4). This repo’s **`railway-elasticsearch`** image adds `network.bind_host: ["0.0.0.0", "::"]` so the API can reach ES; **redeploy elasticsearch** after pulling the latest `railway-elasticsearch` build.
 - **Networking:** **elasticsearch** → **Settings** → **Networking** → **do not** click **Generate Domain** (keep ES private; API uses `elasticsearch.railway.internal`).
 
 #### Service B: `api`
