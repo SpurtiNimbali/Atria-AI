@@ -246,8 +246,10 @@ Same Docker app as always — **no functionality change**. Only “hosting” is
 ## What to send testers
 
 - **URL:** your Railway domain or VPS HTTPS URL  
-- **Patient ID:** `synthetic-001`  
+- **Patient ID:** `synthetic-001` (demo patient **Sophia Grace Doe** — data comes from **Elasticsearch** after ingest)  
 - **Disclaimer:** Not medical advice — educational / planning support only.
+
+**UI shows generic vitals / timeline but not Sophia’s EHR:** WebSockets can work while the **dashboard** (`GET /patients/synthetic-001/dashboard`) still has nothing to read. On Railway: ensure **`elasticsearch`** is **up** before **`api`** finishes booting, **`ELASTIC_URL`** is `http://elasticsearch.railway.internal:9200`, and **`AUTO_INGEST_SYNTHETIC_DEMO=1`**. Check **api** deploy logs for `AUTO_INGEST_SYNTHETIC_DEMO finished`. If ingest ran before ES was ready, **redeploy api** or call **`POST https://<your-api>/patients/synthetic-001/refresh`** once, then reload the Vercel app.
 
 ---
 

@@ -95,37 +95,63 @@ export default function App() {
   const voiceStateRef = useRef<VoiceState>("idle");
   const queryInProgressRef = useRef(false); // Prevent duplicate query sends
 
-  const patientData = dashboardData?.patient || { name: "Emily Marie Johnson", mrn: patientId, status: "Stable" };
+  const rawPatient = dashboardData?.patient;
+  const hasPatientName =
+    rawPatient &&
+    typeof rawPatient === "object" &&
+    typeof (rawPatient as { name?: unknown }).name === "string" &&
+    (rawPatient as { name: string }).name.trim().length > 0;
+  const patientData = hasPatientName
+    ? {
+        ...(rawPatient as object),
+        mrn: (rawPatient as { mrn?: string }).mrn || patientId,
+        status: (rawPatient as { status?: string }).status || "Stable",
+      }
+    : {
+        name: patientId === "synthetic-001" ? "Sophia Grace Doe" : "Emily Marie Johnson",
+        mrn: patientId,
+        status: "Stable",
+      };
 
   // Fetch dashboard data on mount
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
         const response = await fetch(`${getBackendUrl()}/patients/${patientId}/dashboard`);
-        if (response.ok) {
-          const data = await response.json();
-          setDashboardData(data);
-          
-          // Update patient data
-          if (data.patient) {
-            setPatientId(data.patient.mrn || patientId);
-          }
-          
-          // Update timeline commits from dashboard timeline
-          if (data.timeline && data.timeline.length > 0) {
-            const timelineCommits = data.timeline.slice(0, 10).map((event: any, idx: number) => {
-              const date = new Date(event.timestamp);
-              const timeString = date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
-              return {
-                id: `timeline-${idx}`,
-                time: timeString,
-                title: event.title || event.action,
-                summary: event.summary || "",
-                isBranch: false
-              };
-            });
-            setCommits(timelineCommits);
-          }
+        if (!response.ok) {
+          const snippet = (await response.text()).slice(0, 400);
+          console.warn(
+            "Dashboard API not OK — Sophia/demo data needs Elasticsearch + ingest. Status:",
+            response.status,
+            snippet || ""
+          );
+          return;
+        }
+        const data = await response.json();
+        if (data?.patient && typeof data.patient === "object" && !Object.keys(data.patient).length) {
+          console.warn(
+            "Dashboard returned empty patient — index may be empty. Set Railway AUTO_INGEST_SYNTHETIC_DEMO=1 or POST /patients/synthetic-001/refresh on the API."
+          );
+        }
+        setDashboardData(data);
+
+        if (data.patient) {
+          setPatientId(data.patient.mrn || patientId);
+        }
+
+        if (data.timeline && data.timeline.length > 0) {
+          const timelineCommits = data.timeline.slice(0, 10).map((event: any, idx: number) => {
+            const date = new Date(event.timestamp);
+            const timeString = date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+            return {
+              id: `timeline-${idx}`,
+              time: timeString,
+              title: event.title || event.action,
+              summary: event.summary || "",
+              isBranch: false,
+            };
+          });
+          setCommits(timelineCommits);
         }
       } catch (error) {
         console.error("Failed to fetch dashboard data:", error);
