@@ -13,6 +13,14 @@ Conversational caregiver copilot: discharge-style context in Elasticsearch, Fast
 | Web UI (Vercel: set root to `web`) | `web/` |
 | Older trees | `_legacy/` |
 
+## GitHub Desktop
+
+1. Sign in to GitHub in **GitHub Desktop** (**GitHub Desktop → Settings → Accounts**).
+2. **File → Add Local Repository…** → choose this folder (`TreeHacks` / Atria AI project root).
+3. You should see your commits on `main`. Click **Publish repository** (toolbar or **Repository → Publish repository**), pick the name (e.g. `TreeHacks`), owner, and public/private → **Publish repository**.
+
+There is **no `origin` remote** until you publish, so Desktop will not try to sync with a missing GitHub URL. After publishing, **Fetch/Pull/Push** works like any other repo. Never commit `.env` (it is gitignored).
+
 ## Prerequisites
 
 - Docker (for Elasticsearch)
