@@ -1,6 +1,6 @@
 # Atria AI
 
-**→ Shareable deploy (what you must do in the browser): [DEPLOY_NOW.md](DEPLOY_NOW.md)**
+**→ Deploy: [DEPLOY_NOW.md](DEPLOY_NOW.md)** — includes **Vercel + Railway** (Path D).
 
 Conversational caregiver copilot: discharge-style context in Elasticsearch, FastAPI WebSocket backend, and a Vite/React UI. **Not medical advice** — educational and planning support only.
 

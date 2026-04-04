@@ -14,5 +14,5 @@ COPY agent ./agent
 
 EXPOSE 8000
 
-# Fixed port so split platforms (e.g. Railway private DNS) can use api.railway.internal:8000
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Railway sets PORT for public routing; Docker Compose leaves it unset → 8000
+CMD ["sh", "-c", "exec uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"]

@@ -81,13 +81,17 @@ allowed_origins = [
 if os.getenv("ALLOWED_ORIGINS"):
     allowed_origins.extend([o.strip() for o in os.getenv("ALLOWED_ORIGINS", "").split(",") if o.strip()])
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=allowed_origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Vercel production + preview URLs (*.vercel.app) without listing each branch (set ALLOW_VERCEL_CORS_REGEX=0 to disable)
+_cors: dict = {
+    "allow_origins": allowed_origins,
+    "allow_credentials": True,
+    "allow_methods": ["*"],
+    "allow_headers": ["*"],
+}
+if os.getenv("ALLOW_VERCEL_CORS_REGEX", "1").strip() != "0":
+    _cors["allow_origin_regex"] = r"https://.*\.vercel\.app"
+
+app.add_middleware(CORSMiddleware, **_cors)
 
 
 def _apply_certifi_fix_for_es():
