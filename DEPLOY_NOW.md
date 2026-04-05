@@ -146,7 +146,8 @@ Sign in at [railway.app](https://railway.app) → **New project** → **Empty pr
 - **+ New** → **GitHub Repo** → this repo  
 - **Root directory:** `backend`  
 - **Variables:**
-  - `ELASTIC_URL` = `http://elasticsearch.railway.internal:9200`
+  - `ELASTIC_URL` = `http://elasticsearch.railway.internal:9200`  
+  - Do **not** set **`ELASTIC_PASSWORD`** / **`ELASTIC_USER`** unless Elasticsearch has security enabled — the client used to default **`elastic` / `changeme`**, which is wrong for **`xpack.security.enabled=false`** on Railway.
   - `OPENAI_API_KEY` = *(your key)*
   - `JINA_API_KEY` = *(your key)*
   - `AUTO_INGEST_SYNTHETIC_DEMO` = `1`
@@ -200,7 +201,8 @@ Railway treats **each Compose service as its own service** (not one `docker comp
 - **New** → **GitHub Repo** → this repo  
 - **Root directory:** `backend`  
 - **Variables** (minimum):
-  - `ELASTIC_URL` = `http://elasticsearch.railway.internal:9200`
+  - `ELASTIC_URL` = `http://elasticsearch.railway.internal:9200`  
+  - Do **not** set **`ELASTIC_PASSWORD`** / **`ELASTIC_USER`** unless Elasticsearch has security enabled — the client used to default **`elastic` / `changeme`**, which is wrong for **`xpack.security.enabled=false`** on Railway.
   - `OPENAI_API_KEY` = *(your key)*
   - `JINA_API_KEY` = *(your key)*
   - `AUTO_INGEST_SYNTHETIC_DEMO` = `1`
