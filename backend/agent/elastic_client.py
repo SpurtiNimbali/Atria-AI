@@ -18,51 +18,58 @@ if not hasattr(certifi, 'where'):
 
 import os
 import socket
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional, Union
 from urllib.parse import urlparse, urlunparse
 
 from elasticsearch import Elasticsearch
 from elasticsearch.helpers import bulk
 
 
-def _railway_private_es_url(url: str) -> str:
+def _railway_private_es_hosts(url: str) -> List[str]:
     """
-    Railway private networking is IPv6-oriented; urllib3 often stalls trying IPv4 first.
-    If we can resolve an IPv6 address for *.railway.internal, use a literal in the URL.
-    Set ELASTIC_RAILWAY_RAW_URL=1 to skip (use hostname only).
+    Resolve *.railway.internal to concrete IPs. Railway mesh often needs IPv6; some
+    resolver ordering may try IPv4 first and urllib3 may stall. Pass every address
+    as a node URL (IPv6 literals first) so elastic-transport can reach ES.
+    Set ELASTIC_RAILWAY_RAW_URL=1 to skip resolution (hostname only).
     """
     if (
         ".railway.internal" not in url
         or os.getenv("ELASTIC_RAILWAY_RAW_URL", "").strip() == "1"
     ):
-        return url
+        return [url]
     try:
         parsed = urlparse(url)
         host = parsed.hostname
         port = parsed.port or 9200
         if not host:
-            return url
-        v6: Optional[str] = None
+            return [url]
+        v6: List[str] = []
+        v4: List[str] = []
         for family, _, _, _, sockaddr in socket.getaddrinfo(
             host, port, type=socket.SOCK_STREAM
         ):
+            addr = sockaddr[0]
             if family == socket.AF_INET6:
-                v6 = sockaddr[0]
-                break
-        if v6:
-            netloc = f"[{v6}]:{port}"
-            return urlunparse(
-                (parsed.scheme, netloc, "", "", "", "")
-            )
+                u = urlunparse(
+                    (parsed.scheme, f"[{addr}]:{port}", "", "", "", "")
+                )
+                if u not in v6:
+                    v6.append(u)
+            elif family == socket.AF_INET:
+                u = urlunparse(
+                    (parsed.scheme, f"{addr}:{port}", "", "", "", "")
+                )
+                if u not in v4:
+                    v4.append(u)
+        merged = v6 + v4
+        return merged if merged else [url]
     except OSError:
-        pass
-    return url
+        return [url]
 
 
 def get_elastic_client() -> Elasticsearch:
     """Create and return Elasticsearch client."""
     raw_elastic_url = os.getenv("ELASTIC_URL", "http://localhost:9200").strip()
-    elastic_url = _railway_private_es_url(raw_elastic_url)
     elastic_api_key = os.getenv("ELASTIC_API_KEY")
     elastic_password = (os.getenv("ELASTIC_PASSWORD") or "").strip()
 
@@ -76,7 +83,7 @@ def get_elastic_client() -> Elasticsearch:
     # Local / dev — security off
     if "localhost" in raw_elastic_url or "127.0.0.1" in raw_elastic_url:
         return Elasticsearch(
-            elastic_url,
+            raw_elastic_url,
             verify_certs=False,
             ssl_show_warn=False,
             **connection_params
@@ -84,10 +91,14 @@ def get_elastic_client() -> Elasticsearch:
 
     # Railway private cluster — xpack.security disabled, no basic_auth
     if ".railway.internal" in raw_elastic_url and not elastic_api_key and not elastic_password:
+        hosts = _railway_private_es_hosts(raw_elastic_url)
+        target: Union[str, List[str]] = hosts[0] if len(hosts) == 1 else hosts
         return Elasticsearch(
-            elastic_url,
+            target,
             verify_certs=False,
             ssl_show_warn=False,
+            sniff_on_start=False,
+            sniff_on_connection_fail=False,
             **connection_params
         )
 
