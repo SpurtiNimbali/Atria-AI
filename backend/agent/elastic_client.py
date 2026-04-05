@@ -16,6 +16,7 @@ if not hasattr(certifi, 'where'):
         return default_paths.cafile or default_paths.capath or '/etc/ssl/cert.pem'
     certifi.where = certifi_where
 
+import logging
 import os
 import socket
 from typing import Any, Dict, List, Optional, Union
@@ -23,6 +24,8 @@ from urllib.parse import urlparse, urlunparse
 
 from elasticsearch import Elasticsearch
 from elasticsearch.helpers import bulk
+
+logger = logging.getLogger(__name__)
 
 
 def _railway_private_es_hosts(url: str) -> List[str]:
@@ -89,10 +92,26 @@ def get_elastic_client() -> Elasticsearch:
             **connection_params
         )
 
-    # Railway private cluster — xpack.security disabled, no basic_auth
-    if ".railway.internal" in raw_elastic_url and not elastic_api_key and not elastic_password:
+    # Railway: private DNS *.railway.internal (or public TCP proxy — see ELASTIC_RAILWAY_TCP_PROXY)
+    insecure_railway = not elastic_api_key and not elastic_password
+    use_tcp_proxy = os.getenv("ELASTIC_RAILWAY_TCP_PROXY", "").strip() == "1"
+
+    if use_tcp_proxy and insecure_railway:
+        logger.info("Elasticsearch client using ELASTIC_URL (Railway TCP proxy): %s", raw_elastic_url)
+        return Elasticsearch(
+            raw_elastic_url,
+            verify_certs=False,
+            ssl_show_warn=False,
+            sniff_on_start=False,
+            sniff_on_connection_fail=False,
+            **connection_params
+        )
+
+    if ".railway.internal" in raw_elastic_url and insecure_railway:
         hosts = _railway_private_es_hosts(raw_elastic_url)
         target: Union[str, List[str]] = hosts[0] if len(hosts) == 1 else hosts
+        logger.info("Elasticsearch client (Railway private) targets: %s", target)
+
         return Elasticsearch(
             target,
             verify_certs=False,
@@ -105,7 +124,7 @@ def get_elastic_client() -> Elasticsearch:
     # Elastic Cloud / secured cluster
     if elastic_api_key:
         return Elasticsearch(
-            elastic_url,
+            raw_elastic_url,
             api_key=elastic_api_key,
             verify_certs=True,
             **connection_params
@@ -113,7 +132,7 @@ def get_elastic_client() -> Elasticsearch:
 
     elastic_user = os.getenv("ELASTIC_USER", "elastic")
     return Elasticsearch(
-        elastic_url,
+        raw_elastic_url,
         basic_auth=(elastic_user, elastic_password or "changeme"),
         verify_certs=True,
         **connection_params

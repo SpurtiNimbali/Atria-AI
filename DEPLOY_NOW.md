@@ -138,7 +138,8 @@ Sign in at [railway.app](https://railway.app) → **New project** → **Empty pr
   - `xpack.security.enabled` = `false`
   - `ES_JAVA_OPTS` = `-Xms256m -Xmx256m`
 - **Volume (not under Settings):** **⌘K** / canvas → attach a **volume** at **`/usr/share/elasticsearch/data`** if you want persistence ([Using volumes](https://docs.railway.com/volumes)). Use the **`railway-elasticsearch`** build when you use a volume.
-- **API logs show `ConnectTimeout` / `elasticsearch.railway.internal:9200`:** Railway’s private network expects services to **listen on IPv6** as well as IPv4. The stock Docker image only sets `network.host: 0.0.0.0` (IPv4). This repo’s **`railway-elasticsearch`** image adds `network.bind_host: ["0.0.0.0", "::"]` so the API can reach ES; **redeploy elasticsearch** after pulling the latest `railway-elasticsearch` build.
+- **`ConnectTimeout` to `elasticsearch.railway.internal:9200` (private mesh):** Redeploy **`railway-elasticsearch`** — its `elasticsearch.yml` sets **`network.host: ["0.0.0.0", "::"]`** for dual-stack HTTP. Check **api** deploy logs for **`Elasticsearch client (Railway private) targets:`** (IPs) to confirm the latest backend image.
+- **Still times out — use Railway TCP Proxy (demo):** On **`elasticsearch`** → **Settings** → **Networking** → **+ TCP Proxy** (forward to container port **9200**). Copy the **`hostname:port`** Railway shows. On **api**: **`ELASTIC_URL`** = `http://<that-hostname>:<port>` (**http**, not https), **`ELASTIC_RAILWAY_TCP_PROXY`** = **`1`**, no **`ELASTIC_PASSWORD`**. Redeploy **api**. *(Exposes Elasticsearch on the public internet; OK only for a hackathon demo with `xpack.security.enabled=false`.)*
 - **Networking:** **elasticsearch** → **Settings** → **Networking** → **do not** click **Generate Domain** (keep ES private; API uses `elasticsearch.railway.internal`).
 
 #### Service B: `api`

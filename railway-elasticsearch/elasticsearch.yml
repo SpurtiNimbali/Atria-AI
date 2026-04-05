@@ -1,4 +1,4 @@
-# Override image default (network.host: 0.0.0.0) so the node accepts Railway
-# private-network traffic, which is delivered over IPv6 (see Railway docs).
+# Dual-stack bind so Railway private mesh (IPv4 and/or IPv6) can reach :9200.
+# `bind_host` alone can leave HTTP in a bad state; `network.host` as a list is valid in ES 8.x.
 cluster.name: "docker-cluster"
-network.bind_host: ["0.0.0.0", "::"]
+network.host: ["0.0.0.0", "::"]
