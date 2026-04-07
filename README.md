@@ -1,161 +1,120 @@
 # Atria AI
 
-**→ Deploy: [DEPLOY_NOW.md](DEPLOY_NOW.md)** — includes **Vercel + Railway** (Path D).
+Atria AI is a conversational caregiver copilot for post-discharge support. It combines:
+- a Vite/React frontend
+- a FastAPI WebSocket API
+- Elasticsearch-backed patient context retrieval
+- tool-augmented clinical reasoning workflows
 
-Conversational caregiver copilot: discharge-style context in Elasticsearch, FastAPI WebSocket backend, and a Vite/React UI. **Not medical advice** — educational and planning support only.
+All outputs are educational/planning support only. **Not medical advice.**
 
-## Layout
+## Live demo
 
-| Piece | Path |
-|--------|------|
-| Elasticsearch (Docker) | `docker-compose.yml` |
-| Full stack in Docker (ES + API + UI) | `docker compose --profile fullstack` |
-| **Vercel UI + Docker API** | `docker compose --profile backend` — see **Vercel + Docker** below |
-| API + agents | `backend/` (`main.py`, agent code in `backend/agent/`) |
-| Web UI (Vercel: set root to `web`) | `web/` |
-| Older trees | `_legacy/` |
-
-## GitHub Desktop
-
-1. Sign in to GitHub in **GitHub Desktop** (**GitHub Desktop → Settings → Accounts**).
-2. **File → Add Local Repository…** → choose this folder (`TreeHacks` / Atria AI project root).
-3. You should see your commits on `main`. Click **Publish repository** (toolbar or **Repository → Publish repository**), pick the name (e.g. `TreeHacks`), owner, and public/private → **Publish repository**.
-
-There is **no `origin` remote** until you publish, so Desktop will not try to sync with a missing GitHub URL. After publishing, **Fetch/Pull/Push** works like any other repo. Never commit `.env` (it is gitignored).
-
-## Prerequisites
-
-- Docker (for Elasticsearch)
-- Python 3.10+
-- Node 18+
-
-## Setup
-
-```bash
-cp env.example .env
-# Edit .env: OPENAI_API_KEY, JINA_API_KEY, ELASTIC_* if not local defaults
-./setup.sh
-```
-
-Or start everything in one go (after `.env` exists):
-
-```bash
-chmod +x start_system.sh setup.sh
-./start_system.sh
-```
-
-### Full stack in Docker (deployable single host)
-
-Requires a repo-root `.env` (copy from `env.example` and set API keys). Builds `backend/Dockerfile` + `web/Dockerfile`; nginx on **8080** proxies `/ws`, `/patients`, `/tts`, and `/health` to the API so the browser uses one origin.
-
-```bash
-chmod +x deploy-docker.sh
-./deploy-docker.sh
-```
-
-Or manually:
-
-```bash
-cp env.example .env   # if needed; then edit keys
-docker compose --profile fullstack up -d --build
-```
-
-After containers are healthy, index the demo patient once:
-
-```bash
-docker compose exec api sh -c 'cd agent && python ingest_synthetic.py synthetic_patient.json'
-```
-
-- **UI:** `http://localhost:8080`
-- **API (direct):** `http://127.0.0.1:8000`
-- Stop: `docker compose --profile fullstack down`
-
-`docker compose up -d` **without** the profile still starts only Elasticsearch + Kibana (for local dev with `./start_system.sh` or manual backend/Vite).
-
-Manual run (no Docker for API/UI):
-
-```bash
-docker compose up -d
-cd backend && python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt
-cd agent && python ingest_synthetic.py synthetic_patient.json   # demo patient synthetic-001
-cd .. && chmod +x run_dev.sh && ./run_dev.sh
-# (loads repo-root `.env` automatically; binds 127.0.0.1:8000)
-# other terminal:
-cd web && cp .env.example .env.local   # set VITE_BACKEND_URL if needed
-npm install && npm run dev
-```
-
-- API: `http://127.0.0.1:8000` (health: `/health`)
-- UI: `http://localhost:5173` (default Vite)
+- Demo app: [https://atria-lp82jmdxg-spurtinimbalis-projects.vercel.app/](https://atria-lp82jmdxg-spurtinimbalis-projects.vercel.app/)
 - Demo patient ID: `synthetic-001`
 
-## Environment
+## Deployment guide
 
-| Variable | Role |
-|----------|------|
-| `ALLOWED_ORIGINS` | Comma-separated CORS origins (include your Vercel URL in prod) |
-| `PORT` / `GATEWAY_PORT` | API port (default 8000) |
-| `ELASTIC_URL` | Elasticsearch base URL |
-| `OPENAI_API_KEY`, `JINA_API_KEY` | LLM + embeddings |
+- Primary runbook: `DEPLOY_NOW.md`
 
-Frontend: `web/.env.example` → `VITE_BACKEND_URL` (e.g. `https://your-api.vercel.app` in production).
+## Architecture
 
-## Vercel + Docker (recommended split)
+### Runtime components
 
-**Idea:** Vercel serves the static/React app from `web/`; a VPS or any Docker host runs Elasticsearch + the FastAPI API.
+- `web/`: Vite + React UI
+- `backend/main.py`: FastAPI app, `/health`, `/patients/*`, `/ws` endpoints
+- `backend/agent/conversational_doctor.py`: core orchestration loop (tool-calling + streamed responses)
+- `backend/agent/medical_tools.py`: deterministic medical tools (interactions, dosing, risk, KG, trials)
+- `backend/agent/ehr_parser.py`: dashboard extraction from indexed EHR chunks
+- `backend/agent/elastic_client.py`: ES connectivity layer
 
-### 1. GitHub
+### Data plane
 
-Push this repo (never commit `.env`).
+1. EHR FHIR bundle is normalized into chunks (`normalize.py`).
+2. Chunks are embedded (Jina) and indexed to Elasticsearch (`ingest_synthetic.py` / `local_ingest.py`).
+3. Query-time hybrid retrieval (BM25 + vector KNN) is executed (`search.py`).
+4. Conversational agent synthesizes grounded answer with tool outputs and emits websocket events.
+5. UI renders timeline, vitals, citations, and streamed assistant responses.
 
-### 2. Docker host (API + Elasticsearch)
+## API surface
 
-On the machine that will run the backend (e.g. a small VPS with Docker):
+- `GET /health` -> service health
+- `GET /patients/{patient_id}/dashboard` -> structured dashboard payload from ES
+- `POST /patients/{patient_id}/refresh` -> re-ingest patient data
+- `POST /tts` -> ElevenLabs TTS passthrough
+- `WS /ws` -> bidirectional query/response event stream
+
+## Agent/tool capabilities (technical)
+
+The live agent can call tools including:
+- patient-document retrieval (`search_medical_literature`)
+- drug interaction checks (`check_drug_interactions`)
+- lab trend analysis + ML forecasting (`analyze_lab_trends`, `predict_lab_trend_ml`)
+- treatment risk + dose calculations (`predict_treatment_risk`, `calculate_personalized_dose`)
+- structured clinical knowledge queries (`query_knowledge_graph`)
+- trial lookup (`search_clinical_trials`)
+- pharmacogenomics checks (`check_genetic_compatibility`)
+- scenario and progression simulation (`analyze_what_if_scenario`, `predict_disease_progression`)
+
+## Repository layout
+
+- `backend/` - API + agent runtime
+- `web/` - frontend app
+- `docker-compose.yml` - local/dev stack
+- `docker-compose.deploy.yml` - deploy-oriented compose
+- `railway-elasticsearch/` - Railway-specific ES wrapper image
+- `_legacy/` - archived material
+
+## Local development
+
+### Option A: full stack in Docker
 
 ```bash
-git clone <your-repo-url> && cd <repo>
 cp env.example .env
-# Edit .env: OPENAI_API_KEY, JINA_API_KEY, and:
-#   ALLOWED_ORIGINS=https://<your-project>.vercel.app
-chmod +x deploy-backend-docker.sh
-./deploy-backend-docker.sh
-```
-
-Then index the demo patient once:
-
-```bash
+docker compose --profile fullstack up -d --build
 docker compose exec api sh -c 'cd agent && python ingest_synthetic.py synthetic_patient.json'
 ```
 
-- API listens on **8000** by default. For production, put **HTTPS** in front (Caddy, nginx, Traefik, or your cloud load balancer) and point it at `http://127.0.0.1:8000`.
-- **Do not** expose Elasticsearch **9200** or Kibana **5601** to the public internet; keep them on a private network or firewall them.
+Default URLs:
+- UI: `http://localhost:8080`
+- API: `http://127.0.0.1:8000`
 
-### 3. Vercel (frontend)
+### Option B: backend stack only (frontend on Vercel)
 
-1. **New Project** → import the same GitHub repo.  
-2. **Root Directory:** `web`  
-3. Framework: **Vite** (build `npm run build`, output `dist`).  
-4. **Environment variable:** `VITE_BACKEND_URL` = your **public HTTPS API origin** (e.g. `https://api.yourdomain.com`), no trailing slash.
+```bash
+cp env.example .env
+docker compose --profile backend up -d --build
+docker compose exec api sh -c 'cd agent && python ingest_synthetic.py synthetic_patient.json'
+```
 
-Redeploy Vercel after changing `VITE_BACKEND_URL`.
+## Configuration
 
-### 4. CORS
+### Backend env
 
-The API must allow your Vercel origin. With `ALLOWED_ORIGINS` in the server `.env` (loaded by the `api` container), include exactly your preview/production URLs if they differ (comma-separated).
+- `OPENAI_API_KEY`
+- `JINA_API_KEY`
+- `ELASTIC_URL` (defaults vary by runtime)
+- `ALLOWED_ORIGINS` (comma-separated CORS allowlist)
+- `AUTO_INGEST_SYNTHETIC_DEMO` (`1` to auto-index demo bundle at startup)
 
----
+Optional:
+- `ELEVENLABS_API_KEY`
+- `ELASTIC_API_KEY` / `ELASTIC_USER` / `ELASTIC_PASSWORD` (only when ES security is enabled)
 
-## One link for testers (HTTPS)
+### Frontend env
 
-Step-by-step (VPS, Railway, ngrok): **[DEPLOY_NOW.md](DEPLOY_NOW.md)**.
+- `VITE_BACKEND_URL` must be the API origin only (no trailing slash)
+  - Example: `https://api.example.com`
 
----
+## Production notes
 
-## Vercel only (UI)
+- For a stable split deployment, run API + ES on a VPS and serve UI on Vercel.
+- Keep Elasticsearch non-public; do not expose `9200/9300/5601` on internet-facing firewall rules.
+- On low-memory hosts (2GB), prefer running API + ES only; keep Kibana off unless needed.
 
-- Root directory **`web`**, `VITE_BACKEND_URL` = your API’s public origin.  
-- More hosting options for the API: `web/DEPLOYMENT.md`.
+## Safety
 
-## Archived docs
-
-Pitch decks, architecture write-ups, and older stack notes live under `_legacy/docs/`. Some of those files still use the older codename **CareFork**; the product name is **Atria AI**.
+- No diagnosis/prescription guarantees.
+- Cite source context when possible.
+- Flag uncertainty or missing data explicitly.
+- Always present outputs as educational planning support, not medical advice.
