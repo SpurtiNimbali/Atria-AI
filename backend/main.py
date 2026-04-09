@@ -54,18 +54,42 @@ if AGENT_DIR not in sys.path:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    if os.getenv("AUTO_INGEST_SYNTHETIC_DEMO", "").strip() == "1":
+    # Default enabled: auto-heal missing demo index/docs on fresh deploys/restarts.
+    if os.getenv("AUTO_INGEST_SYNTHETIC_DEMO", "1").strip() != "0":
         try:
-            from ingest_synthetic import ingest_synthetic_patient
+            from elastic_client import get_elastic_client
 
-            json_path = os.path.join(os.path.dirname(__file__), "agent", "synthetic_patient.json")
+            patient_id = "synthetic-001"
+            index_name = "ehr_chunks"
+            es = get_elastic_client()
 
-            def _ingest():
-                return ingest_synthetic_patient(json_path)
+            needs_ingest = not es.indices.exists(index=index_name)
+            if not needs_ingest:
+                count_result = es.count(
+                    index=index_name,
+                    body={"query": {"term": {"patient_id": patient_id}}},
+                )
+                needs_ingest = int(count_result.get("count", 0)) == 0
 
-            loop = asyncio.get_running_loop()
-            out = await loop.run_in_executor(None, _ingest)
-            logger.info("AUTO_INGEST_SYNTHETIC_DEMO finished: %s", out)
+            if needs_ingest:
+                logger.info(
+                    "AUTO_INGEST_SYNTHETIC_DEMO: %s missing or empty for %s; ingesting...",
+                    index_name,
+                    patient_id,
+                )
+
+                def _ingest():
+                    return ingest_patient_local(patient_id)
+
+                loop = asyncio.get_running_loop()
+                out = await loop.run_in_executor(None, _ingest)
+                logger.info("AUTO_INGEST_SYNTHETIC_DEMO finished: %s", out)
+            else:
+                logger.info(
+                    "AUTO_INGEST_SYNTHETIC_DEMO: %s already has data for %s; skipping ingest",
+                    index_name,
+                    patient_id,
+                )
         except Exception as e:
             logger.warning("AUTO_INGEST_SYNTHETIC_DEMO failed (non-fatal): %s", e, exc_info=True)
     yield
