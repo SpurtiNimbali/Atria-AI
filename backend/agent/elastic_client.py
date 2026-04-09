@@ -92,6 +92,18 @@ def get_elastic_client() -> Elasticsearch:
             **connection_params
         )
 
+    # Docker Compose / dev — HTTP + no credentials (xpack.security.enabled=false). Hostname is often `elasticsearch`, not localhost.
+    if raw_elastic_url.startswith("http://") and not elastic_api_key and not elastic_password:
+        logger.info("Elasticsearch client (insecure HTTP, no credentials): %s", raw_elastic_url)
+        return Elasticsearch(
+            raw_elastic_url,
+            verify_certs=False,
+            ssl_show_warn=False,
+            sniff_on_start=False,
+            sniff_on_connection_fail=False,
+            **connection_params
+        )
+
     # Railway: private DNS *.railway.internal (or public TCP proxy — see ELASTIC_RAILWAY_TCP_PROXY)
     insecure_railway = not elastic_api_key and not elastic_password
     use_tcp_proxy = os.getenv("ELASTIC_RAILWAY_TCP_PROXY", "").strip() == "1"

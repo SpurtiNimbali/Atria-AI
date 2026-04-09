@@ -54,44 +54,92 @@ if AGENT_DIR not in sys.path:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Default enabled: auto-heal missing demo index/docs on fresh deploys/restarts.
+    # Default on: ensure Sophia demo (synthetic-001) exists after ES comes up (Docker / fresh volume).
     if os.getenv("AUTO_INGEST_SYNTHETIC_DEMO", "1").strip() != "0":
         try:
             from elastic_client import get_elastic_client
+            from local_ingest import ingest_patient_local as _ingest_patient_local
+            from ingest_synthetic import ingest_synthetic_patient
 
-            patient_id = "synthetic-001"
+            patient_id = (os.getenv("SYNTHETIC_DEMO_PATIENT_ID", "synthetic-001").strip() or "synthetic-001")
             index_name = "ehr_chunks"
             es = get_elastic_client()
+            loop = asyncio.get_running_loop()
 
-            needs_ingest = not es.indices.exists(index=index_name)
+            force = os.getenv("FORCE_REINGEST_SYNTHETIC_DEMO", "").strip().lower() in (
+                "1",
+                "true",
+                "yes",
+            )
+
+            def _count_docs() -> int:
+                try:
+                    count_result = es.count(
+                        index=index_name,
+                        query={"term": {"patient_id": patient_id}},
+                    )
+                except TypeError:
+                    count_result = es.count(
+                        index=index_name,
+                        body={"query": {"term": {"patient_id": patient_id}}},
+                    )
+                return int(count_result.get("count", 0))
+
+            needs_ingest = force or (not es.indices.exists(index=index_name)) or (_count_docs() == 0)
+
             if not needs_ingest:
-                count_result = es.count(
-                    index=index_name,
-                    body={"query": {"term": {"patient_id": patient_id}}},
-                )
-                needs_ingest = int(count_result.get("count", 0)) == 0
-
-            if needs_ingest:
                 logger.info(
-                    "AUTO_INGEST_SYNTHETIC_DEMO: %s missing or empty for %s; ingesting...",
+                    "AUTO_INGEST_SYNTHETIC_DEMO: %s already has data for %s; skip (set FORCE_REINGEST_SYNTHETIC_DEMO=1 to redo)",
                     index_name,
                     patient_id,
                 )
-
-                def _ingest():
-                    return ingest_patient_local(patient_id)
-
-                loop = asyncio.get_running_loop()
-                out = await loop.run_in_executor(None, _ingest)
-                logger.info("AUTO_INGEST_SYNTHETIC_DEMO finished: %s", out)
             else:
                 logger.info(
-                    "AUTO_INGEST_SYNTHETIC_DEMO: %s already has data for %s; skipping ingest",
-                    index_name,
+                    "AUTO_INGEST_SYNTHETIC_DEMO: indexing %s into %s (force=%s)...",
                     patient_id,
+                    index_name,
+                    force,
                 )
-        except Exception as e:
-            logger.warning("AUTO_INGEST_SYNTHETIC_DEMO failed (non-fatal): %s", e, exc_info=True)
+
+                def _primary():
+                    return _ingest_patient_local(patient_id)
+
+                try:
+                    out = await loop.run_in_executor(None, _primary)
+                    if not isinstance(out, dict) or out.get("status") != "success":
+                        raise RuntimeError(out or "ingest_patient_local did not succeed")
+                except Exception as e:
+                    logger.warning(
+                        "AUTO_INGEST_SYNTHETIC_DEMO: primary ingest failed (%s); trying ingest_synthetic fallback",
+                        e,
+                    )
+                    synthetic_json = _backend_dir / "agent" / "synthetic_patient.json"
+
+                    def _fallback():
+                        return ingest_synthetic_patient(str(synthetic_json))
+
+                    out2 = await loop.run_in_executor(None, _fallback)
+                    if not isinstance(out2, dict) or out2.get("status") != "success":
+                        raise RuntimeError(out2 or "ingest_synthetic fallback did not succeed")
+
+                try:
+                    es.indices.refresh(index=index_name)
+                except Exception:
+                    logger.debug("index refresh skipped", exc_info=True)
+
+                n = _count_docs()
+                if n == 0:
+                    logger.error(
+                        "AUTO_INGEST_SYNTHETIC_DEMO: verification failed — 0 chunks for %s. "
+                        "Check Elasticsearch connectivity, ELASTIC_URL, JINA_API_KEY, or set DEMO_PLACEHOLDER_EMBEDDINGS=1 for demo-only zeros.",
+                        patient_id,
+                    )
+                else:
+                    logger.info("AUTO_INGEST_SYNTHETIC_DEMO: verified %s chunks for %s", n, patient_id)
+        except Exception:
+            logger.exception(
+                "AUTO_INGEST_SYNTHETIC_DEMO: startup ingest failed — set keys in .env or see logs above"
+            )
     yield
 
 
@@ -222,8 +270,25 @@ async def get_patient_dashboard(patient_id: str):
 
         return get_dashboard_data(patient_id)
     except Exception as e:
+        err = str(e)
+        # Self-heal missing demo index/docs on first dashboard hit, then retry once.
+        if patient_id == "synthetic-001" and "index_not_found_exception" in err:
+            try:
+                logger.warning(
+                    "Dashboard missing index for %s; attempting automatic ingest and retry",
+                    patient_id,
+                )
+                loop = asyncio.get_running_loop()
+                await loop.run_in_executor(None, lambda: ingest_patient_local(patient_id))
+                from ehr_parser import get_dashboard_data as _retry_dashboard_data
+
+                return _retry_dashboard_data(patient_id)
+            except Exception as retry_err:
+                logger.error("Dashboard auto-heal retry failed: %s", retry_err, exc_info=True)
+                raise HTTPException(status_code=500, detail=str(retry_err))
+
         logger.error("Dashboard error: %s", e, exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=err)
 
 
 async def _stream_agent_response(websocket: WebSocket, patient_id: str, transcript: str) -> None:
