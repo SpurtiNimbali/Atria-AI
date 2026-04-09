@@ -65,6 +65,8 @@ async def lifespan(app: FastAPI):
             index_name = "ehr_chunks"
             es = get_elastic_client()
             loop = asyncio.get_running_loop()
+            wait_for_es_seconds = int(os.getenv("AUTO_INGEST_WAIT_FOR_ES_SECONDS", "90"))
+            wait_for_es_interval = float(os.getenv("AUTO_INGEST_WAIT_FOR_ES_INTERVAL", "2"))
 
             force = os.getenv("FORCE_REINGEST_SYNTHETIC_DEMO", "").strip().lower() in (
                 "1",
@@ -84,6 +86,43 @@ async def lifespan(app: FastAPI):
                         body={"query": {"term": {"patient_id": patient_id}}},
                     )
                 return int(count_result.get("count", 0))
+
+            async def _wait_for_elasticsearch() -> bool:
+                # On cold starts ES may still be booting; wait before deciding ingest state.
+                deadline = loop.time() + max(wait_for_es_seconds, 0)
+                last_error = None
+                while True:
+                    try:
+                        ok = await loop.run_in_executor(None, es.ping)
+                        if ok:
+                            return True
+                    except Exception as ping_error:
+                        last_error = ping_error
+
+                    if loop.time() >= deadline:
+                        break
+                    await asyncio.sleep(max(wait_for_es_interval, 0.5))
+
+                if last_error:
+                    logger.warning(
+                        "AUTO_INGEST_SYNTHETIC_DEMO: Elasticsearch not ready after %ss: %s",
+                        wait_for_es_seconds,
+                        last_error,
+                    )
+                else:
+                    logger.warning(
+                        "AUTO_INGEST_SYNTHETIC_DEMO: Elasticsearch not ready after %ss",
+                        wait_for_es_seconds,
+                    )
+                return False
+
+            es_ready = await _wait_for_elasticsearch()
+            if not es_ready:
+                logger.warning(
+                    "AUTO_INGEST_SYNTHETIC_DEMO: skipping startup ingest because Elasticsearch is unavailable"
+                )
+                yield
+                return
 
             needs_ingest = force or (not es.indices.exists(index=index_name)) or (_count_docs() == 0)
 
