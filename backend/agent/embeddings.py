@@ -16,8 +16,22 @@ if not hasattr(certifi, 'where'):
     certifi.where = certifi_where
 
 import os
+import logging
 from typing import List, Union, Optional
 import httpx
+
+logger = logging.getLogger(__name__)
+
+JINA_EMBED_DIM = 768
+
+
+def _placeholder_vectors(n: int) -> List[List[float]]:
+    logger.warning(
+        "Using %sx%s zero embeddings (DEMO_PLACEHOLDER_EMBEDDINGS=1). Set JINA_API_KEY for real vectors.",
+        n,
+        JINA_EMBED_DIM,
+    )
+    return [[0.0] * JINA_EMBED_DIM for _ in range(n)]
 
 
 def generate_embeddings(
@@ -38,7 +52,16 @@ def generate_embeddings(
     """
     api_key = api_key or os.getenv("JINA_API_KEY")
     if not api_key:
-        raise ValueError("JINA_API_KEY not set")
+        if os.getenv("DEMO_PLACEHOLDER_EMBEDDINGS", "").strip().lower() in (
+            "1",
+            "true",
+            "yes",
+        ):
+            is_single = isinstance(texts, str)
+            if is_single:
+                return [0.0] * JINA_EMBED_DIM
+            return _placeholder_vectors(len(texts))
+        raise ValueError("JINA_API_KEY not set (or set DEMO_PLACEHOLDER_EMBEDDINGS=1 for degraded demo mode)")
     
     is_single = isinstance(texts, str)
     if is_single:

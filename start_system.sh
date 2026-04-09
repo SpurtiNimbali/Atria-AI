@@ -51,8 +51,11 @@ if [ ! -f "venv/.packages_installed" ]; then
     touch venv/.packages_installed
 fi
 
-PATIENT_EXISTS=$(curl -s "http://localhost:9200/ehr_chunks/_count?q=patient_id:synthetic-001" 2>/dev/null | grep -o '"count":[0-9]*' | head -1 | cut -d: -f2 || true)
-PATIENT_EXISTS=${PATIENT_EXISTS:-0}
+PATIENT_EXISTS=$(curl -s "http://localhost:9200/ehr_chunks/_count?q=patient_id:synthetic-001" 2>/dev/null | python3 -c "import sys,json
+try:
+    print(int(json.load(sys.stdin).get(\"count\",0)))
+except Exception:
+    print(0)" 2>/dev/null || echo "0")
 if [ "$PATIENT_EXISTS" = "0" ]; then
     echo "Ingesting synthetic patient (synthetic-001)..."
     cd "$ROOT/backend/agent"
